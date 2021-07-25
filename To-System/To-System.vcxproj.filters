@@ -13,15 +13,27 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Source Files\Library">
+      <UniqueIdentifier>{6a5e6c64-0178-45df-9a32-8747aaf6682e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Library">
+      <UniqueIdentifier>{093692fb-5b32-466d-9de0-b424913fb9b0}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Source.cpp">
+    <ClCompile Include="MExec.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Proc.cpp">
+      <Filter>Source Files\Library</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Source.h">
+    <ClInclude Include="MExec.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Proc.h">
+      <Filter>Header Files\Library</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
